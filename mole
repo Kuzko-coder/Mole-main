@@ -23,7 +23,7 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 # Version info
 VERSION="1.6.4"
-MOLE_TAGLINE="can dig deep to clean your Mac."
+MOLE_TAGLINE="роет глубоко, чтобы очистить ваш Mac."
 
 # Check for updates (non-blocking, cached)
 check_for_updates() {
@@ -44,7 +44,7 @@ check_for_updates() {
             grep '^VERSION=' | head -1 | sed 's/VERSION="\(.*\)"/\1/')
 
         if [[ -n "$latest" && "$VERSION" != "$latest" && "$(printf '%s\n' "$VERSION" "$latest" | sort -V | head -1)" == "$VERSION" ]]; then
-            echo -e "${YELLOW}📢 New version ${GREEN}${latest}${YELLOW} available (current: ${VERSION})\n   Run ${GREEN}mole update${YELLOW} to upgrade${NC}" > "$msg_cache"
+            echo -e "${YELLOW}📢 Доступна новая версия ${GREEN}${latest}${YELLOW} (текущая: ${VERSION})\n   Запустите ${GREEN}mole update${YELLOW} для обновления${NC}" > "$msg_cache"
         else
             echo -n > "$msg_cache"
         fi
@@ -67,7 +67,7 @@ show_brand_banner() {
 ${GREEN} __  __       _      ${NC}
 ${GREEN}|  \/  | ___ | | ___ ${NC}
 ${GREEN}| |\/| |/ _ \| |/ _ \\${NC}
-${GREEN}| |  | | (_) | |  __/${NC}  ${BLUE}https://github.com/tw93/mole${NC}
+${GREEN}| |  | | (_) | |  __/${NC}  ${BLUE}https://github.com/Kuzko-coder/Mole-main${NC}
 ${GREEN}|_|  |_|\___/|_|\___|${NC}  ${GREEN}${MOLE_TAGLINE}${NC}
 
 EOF
@@ -117,26 +117,26 @@ EOF
 }
 
 show_version() {
-    printf 'Mole version %s\n' "$VERSION"
+    printf 'Mole версия %s\n' "$VERSION"
 }
 
 show_help() {
     show_brand_banner
     echo
-    printf "%s%s%s\n" "$BLUE" "COMMANDS" "$NC"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo" "$NC" "Interactive main menu"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean" "$NC" "Deeper system cleanup"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --dry-run" "$NC" "Preview cleanup (no deletions)"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --whitelist" "$NC" "Manage protected caches"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo uninstall" "$NC" "Remove applications completely"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze" "$NC" "Interactive disk space explorer"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo update" "$NC" "Update Mole to the latest version"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo remove" "$NC" "Remove Mole from the system"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo --version" "$NC" "Show installed version"
-    printf "  %s%-28s%s %s\n" "$GREEN" "mo --help" "$NC" "Show this help message"
+    printf "%s%s%s\n" "$BLUE" "КОМАНДЫ" "$NC"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo" "$NC" "Интерактивное меню"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean" "$NC" "Глубокая очистка системы"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --dry-run" "$NC" "Предпросмотр очистки (без удаления)"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --whitelist" "$NC" "Управление защищенными кэшами"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo uninstall" "$NC" "Полное удаление приложений"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze" "$NC" "Интерактивный анализатор дискового пространства"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo update" "$NC" "Обновить Mole до последней версии"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo remove" "$NC" "Удалить Mole из системы"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo --version" "$NC" "Показать установленную версию"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo --help" "$NC" "Показать это сообщение справки"
 
-    printf "\n%s%s%s\n" "$BLUE" "MORE" "$NC"
-    printf "  https://github.com/tw93/mole\n\n"
+    printf "\n%s%s%s\n" "$BLUE" "ПОДРОБНЕЕ" "$NC"
+    printf "  https://github.com/Kuzko-coder/Mole-main\n\n"
 }
 
 # Simple update function
@@ -148,9 +148,9 @@ update_mole() {
     fi
 
     # Download and run installer with progress
-    echo -e "${BLUE}◎${NC} Downloading latest version..."
+    echo -e "${BLUE}◎${NC} Загрузка последней версии..."
 
-    local installer_url="https://raw.githubusercontent.com/tw93/mole/main/install.sh"
+    local installer_url="https://raw.githubusercontent.com/Kuzko-coder/Mole-main/main/install.sh"
     local tmp_installer
     tmp_installer="$(mktemp)" || { log_error "Update failed"; exit 1; }
 
@@ -158,18 +158,18 @@ update_mole() {
     if command -v curl >/dev/null 2>&1; then
         if ! curl -fsSL --connect-timeout 10 --max-time 60 "$installer_url" -o "$tmp_installer" 2>&1; then
             rm -f "$tmp_installer"
-            log_error "Update failed. Check network connection."
+            log_error "Обновление не удалось. Проверьте сетевое подключение."
             exit 1
         fi
     elif command -v wget >/dev/null 2>&1; then
         if ! wget --timeout=10 --tries=3 -qO "$tmp_installer" "$installer_url" 2>&1; then
             rm -f "$tmp_installer"
-            log_error "Update failed. Check network connection."
+            log_error "Обновление не удалось. Проверьте сетевое подключение."
             exit 1
         fi
     else
         rm -f "$tmp_installer"
-        log_error "curl or wget required"
+        log_error "Требуется curl или wget"
         exit 1
     fi
 
@@ -181,7 +181,7 @@ update_mole() {
     local install_dir
     install_dir="$(cd "$(dirname "$mole_path")" && pwd)"
 
-    echo -e "${BLUE}◎${NC} Installing update..."
+    echo -e "${BLUE}◎${NC} Установка обновления..."
 
     # Run installer with visible output (but capture for error handling)
     local install_output
@@ -189,17 +189,17 @@ update_mole() {
         echo "$install_output" | grep -Ev "^$" || true
         local new_version
         new_version=$("$mole_path" --version 2>/dev/null | awk 'NF {print $NF}' || echo "")
-        echo -e "${GREEN}✓${NC} Updated to latest version (${new_version:-unknown})"
+        echo -e "${GREEN}✓${NC} Обновлено до последней версии (${new_version:-неизвестно})"
     else
         # Retry without --update flag
         if install_output=$("$tmp_installer" --prefix "$install_dir" --config "$HOME/.config/mole" 2>&1); then
             echo "$install_output" | grep -Ev "^$" || true
             local new_version
             new_version=$("$mole_path" --version 2>/dev/null | awk 'NF {print $NF}' || echo "")
-            echo -e "${GREEN}✓${NC} Updated to latest version (${new_version:-unknown})"
+            echo -e "${GREEN}✓${NC} Обновлено до последней версии (${new_version:-неизвестно})"
         else
             rm -f "$tmp_installer"
-            log_error "Update failed"
+            log_error "Обновление не удалось"
             echo "$install_output" | tail -10 >&2  # Show last 10 lines of error
             exit 1
         fi
@@ -213,7 +213,7 @@ update_mole() {
 remove_mole() {
     clear
     echo ""
-    echo -e "${YELLOW}⚠️  Remove Mole${NC}"
+    echo -e "${YELLOW}⚠️  Удаление Mole${NC}"
     echo ""
 
     # Detect all installations
@@ -255,11 +255,11 @@ remove_mole() {
     done
 
     # Show what will be removed
-    echo "This will remove:"
+    echo "Будет удалено:"
     echo ""
 
     if [[ "$is_homebrew" == "true" ]]; then
-        echo -e "  ${GREEN}✓${NC} Mole (via Homebrew)"
+        echo -e "  ${GREEN}✓${NC} Mole (через Homebrew)"
     fi
 
     if [[ ${#manual_installs[@]} -gt 0 ]]; then
@@ -274,36 +274,36 @@ remove_mole() {
         done
     fi
 
-    echo -e "  ${GREEN}✓${NC} ~/.config/mole/ (configuration)"
-    echo -e "  ${GREEN}✓${NC} ~/.cache/mole/ (cache)"
+    echo -e "  ${GREEN}✓${NC} ~/.config/mole/ (конфигурация)"
+    echo -e "  ${GREEN}✓${NC} ~/.cache/mole/ (кэш)"
 
     if [[ "$is_homebrew" == "false" && ${#manual_installs[@]} -eq 0 && ${#alias_installs[@]} -eq 0 ]]; then
         echo ""
-        echo -e "${YELLOW}No Mole installation detected${NC}"
+        echo -e "${YELLOW}Установка Mole не обнаружена${NC}"
         exit 0
     fi
 
     echo ""
 
     # Confirm removal
-    read -p "Are you sure you want to remove Mole? (y/N): " -n 1 -r
+    read -p "Вы уверены, что хотите удалить Mole? (y/N): " -n 1 -r
     echo ""
 
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        echo "Cancelled."
+        echo "Отменено."
         exit 0
     fi
 
     echo ""
-    log_info "Removing Mole..."
+    log_info "Удаление Mole..."
 
     # Remove Homebrew installation
     if [[ "$is_homebrew" == "true" ]]; then
         if brew uninstall mole 2>&1 | grep -q "Uninstalling"; then
-            log_success "Uninstalled via Homebrew"
+            log_success "Удалено через Homebrew"
         else
-            log_error "Failed to uninstall via Homebrew"
-            echo "Try manually: brew uninstall mole"
+            log_error "Не удалось удалить через Homebrew"
+            echo "Попробуйте вручную: brew uninstall mole"
         fi
     fi
 
@@ -312,9 +312,9 @@ remove_mole() {
         for install in "${manual_installs[@]}"; do
             if [[ -f "$install" ]]; then
                 if rm -f "$install" 2>/dev/null; then
-                    log_success "Removed: $install"
+                    log_success "Удалено: $install"
                 else
-                    log_error "Failed to remove $install (try with sudo)"
+                    log_error "Не удалось удалить $install (попробуйте с sudo)"
                 fi
             fi
         done
@@ -324,9 +324,9 @@ remove_mole() {
         for alias in "${alias_installs[@]}"; do
             if [[ -f "$alias" ]]; then
                 if rm -f "$alias" 2>/dev/null; then
-                    log_success "Removed alias: $alias"
+                    log_success "Удален алиас: $alias"
                 else
-                    log_warning "Could not remove alias $alias (may need sudo)"
+                    log_warning "Не удалось удалить алиас $alias (может потребоваться sudo)"
                 fi
             fi
         done
@@ -334,19 +334,19 @@ remove_mole() {
 
     # Clean up cache first (logs to config)
     if [[ -d "$HOME/.cache/mole" ]]; then
-        rm -rf "$HOME/.cache/mole" 2>/dev/null && log_success "Removed cache"
+        rm -rf "$HOME/.cache/mole" 2>/dev/null && log_success "Удален кэш"
     fi
 
     # Clean up configuration last (contains logs)
     if [[ -d "$HOME/.config/mole" ]]; then
-        log_success "Removed configuration"
+        log_success "Удалена конфигурация"
         rm -rf "$HOME/.config/mole" 2>/dev/null
     fi
 
     echo ""
-    echo -e "${GREEN}✨ Mole has been removed successfully${NC}"
+    echo -e "${GREEN}✨ Mole успешно удален${NC}"
     echo ""
-    echo "Thank you for using Mole!"
+    echo "Спасибо за использование Mole!"
 
     exit 0
 }
@@ -367,15 +367,15 @@ show_main_menu() {
         printf '\033[u\033[0J'
     fi
 
-    show_menu_option 1 "Clean Mac - Remove junk files and optimize" "$([[ $selected -eq 1 ]] && echo true || echo false)"
-    show_menu_option 2 "Uninstall Apps - Remove applications completely" "$([[ $selected -eq 2 ]] && echo true || echo false)"
-    show_menu_option 3 "Analyze Disk - Interactive space explorer" "$([[ $selected -eq 3 ]] && echo true || echo false)"
-    show_menu_option 4 "Help & Information - Usage guide and tips" "$([[ $selected -eq 4 ]] && echo true || echo false)"
-    show_menu_option 5 "Exit - Close Mole" "$([[ $selected -eq 5 ]] && echo true || echo false)"
+    show_menu_option 1 "Очистить Mac - Удалить мусор и оптимизировать" "$([[ $selected -eq 1 ]] && echo true || echo false)"
+    show_menu_option 2 "Удалить приложения - Полное удаление программ" "$([[ $selected -eq 2 ]] && echo true || echo false)"
+    show_menu_option 3 "Анализ диска - Интерактивный анализатор" "$([[ $selected -eq 3 ]] && echo true || echo false)"
+    show_menu_option 4 "Справка и информация - Руководство и советы" "$([[ $selected -eq 4 ]] && echo true || echo false)"
+    show_menu_option 5 "Выход - Закрыть Mole" "$([[ $selected -eq 5 ]] && echo true || echo false)"
 
     if [[ -t 0 ]]; then
         echo ""
-        echo -e "  ${GRAY}↑/↓${NC} Navigate  ${GRAY}|${NC}  ${GRAY}Enter${NC} Select  ${GRAY}|${NC}  ${GRAY}Q/ESC${NC} Quit"
+        echo -e "  ${GRAY}↑/↓${NC} Навигация  ${GRAY}|${NC}  ${GRAY}Enter${NC} Выбрать  ${GRAY}|${NC}  ${GRAY}Q/ESC${NC} Выход"
     fi
 }
 
@@ -397,7 +397,7 @@ interactive_main_menu() {
     cleanup_and_exit() {
         show_cursor
         echo ""
-        echo "Thank you for using Mole!"
+        echo "Спасибо за использование Mole!"
         exit 0
     }
 
@@ -477,8 +477,8 @@ main() {
             interactive_main_menu
             ;;
         *)
-            echo "Unknown command: $1"
-            echo "Use 'mole --help' for usage information."
+            echo "Неизвестная команда: $1"
+            echo "Используйте 'mole --help' для информации об использовании."
             exit 1
             ;;
     esac

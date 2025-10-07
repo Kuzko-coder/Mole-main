@@ -4,12 +4,10 @@
 </div>
 
 <p align="center">
-  <a href="https://github.com/tw93/mole/stargazers"><img src="https://img.shields.io/github/stars/tw93/mole?style=flat-square" alt="Звезды"></a>
-  <a href="https://github.com/tw93/mole/releases"><img src="https://img.shields.io/github/v/tag/tw93/mole?label=версия&style=flat-square" alt="Версия"></a>
+  <a href="https://github.com/Kuzko-coder/Mole-main/stargazers"><img src="https://img.shields.io/github/stars/Kuzko-coder/Mole-main?style=flat-square" alt="Звезды"></a>
+  <a href="https://github.com/Kuzko-coder/Mole-main/releases"><img src="https://img.shields.io/github/v/tag/Kuzko-coder/Mole-main?label=версия&style=flat-square" alt="Версия"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/лицензия-MIT-blue.svg?style=flat-square" alt="Лицензия"></a>
-  <a href="https://github.com/tw93/mole/commits"><img src="https://img.shields.io/github/commit-activity/m/tw93/mole?style=flat-square" alt="Коммиты"></a>
-  <a href="https://twitter.com/HiTw93"><img src="https://img.shields.io/badge/follow-Tw93-red?style=flat-square&logo=Twitter" alt="Twitter"></a>
-  <a href="https://t.me/+GclQS9ZnxyI2ODQ1"><img src="https://img.shields.io/badge/чат-Telegram-blueviolet?style=flat-square&logo=Telegram" alt="Telegram"></a>
+  <a href="https://github.com/Kuzko-coder/Mole-main/commits"><img src="https://img.shields.io/github/commit-activity/m/Kuzko-coder/Mole-main?style=flat-square" alt="Коммиты"></a>
 </p>
 
 <p align="center">
@@ -34,7 +32,7 @@
 **Установка:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tw93/mole/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Kuzko-coder/Mole-main/main/install.sh | bash
 ```
 
 Или через Homebrew:
@@ -150,8 +148,7 @@ $ mo analyze
 
 - **Поставьте звезду репозиторию**, если Mole помог вам освободить место на диске
 - **Поделитесь с друзьями**, которым нужно почистить их Mac
-
-- У меня есть две кошки, <a href="https://miaoyan.app/cats.html?name=Mole" target="_blank">покормите их консервами</a>, если хотите
+- **Сообщайте о проблемах** через [GitHub Issues](https://github.com/Kuzko-coder/Mole-main/issues)
 
 ## Лицензия
 
