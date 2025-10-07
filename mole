@@ -1,0 +1,487 @@
+#!/bin/bash
+# Mole - Main Entry Point
+# A comprehensive macOS maintenance tool
+#
+# 🧹 Clean - Remove junk files and optimize system
+# 🗑️  Uninstall - Remove applications completely
+# 📊 Analyze - Interactive disk space explorer
+#
+# Usage:
+#   ./mole                         # Interactive main menu
+#   ./mole clean                   # Direct clean mode
+#   ./mole uninstall               # Direct uninstall mode
+#   ./mole analyze                 # Disk space explorer
+#   ./mole --help                  # Show help
+
+set -euo pipefail
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source common functions
+source "$SCRIPT_DIR/lib/common.sh"
+
+# Version info
+VERSION="1.6.4"
+MOLE_TAGLINE="can dig deep to clean your Mac."
+
+# Check for updates (non-blocking, cached)
+check_for_updates() {
+    local cache="$HOME/.cache/mole/version_check"
+    local msg_cache="$HOME/.cache/mole/update_message"
+    mkdir -p "$(dirname "$cache")" 2>/dev/null
+
+    # Skip if checked within 24 hours
+    if [[ -f "$cache" ]]; then
+        local age=$(($(date +%s) - $(stat -f%m "$cache" 2>/dev/null || echo 0)))
+        [[ $age -lt 86400 ]] && return
+    fi
+
+    # Background version check (save to file, don't output)
+    (
+        local latest=$(curl -fsSL --connect-timeout 2 --max-time 3 -H "Cache-Control: no-cache" \
+            "https://raw.githubusercontent.com/tw93/mole/main/mole" 2>/dev/null | \
+            grep '^VERSION=' | head -1 | sed 's/VERSION="\(.*\)"/\1/')
+
+        if [[ -n "$latest" && "$VERSION" != "$latest" && "$(printf '%s\n' "$VERSION" "$latest" | sort -V | head -1)" == "$VERSION" ]]; then
+            echo -e "${YELLOW}📢 New version ${GREEN}${latest}${YELLOW} available (current: ${VERSION})\n   Run ${GREEN}mole update${YELLOW} to upgrade${NC}" > "$msg_cache"
+        else
+            echo -n > "$msg_cache"
+        fi
+        touch "$cache" 2>/dev/null
+    ) &
+    disown 2>/dev/null || true
+}
+
+# Show update notification if available
+show_update_notification() {
+    local msg_cache="$HOME/.cache/mole/update_message"
+    if [[ -f "$msg_cache" && -s "$msg_cache" ]]; then
+        cat "$msg_cache"
+        echo
+    fi
+}
+
+show_brand_banner() {
+    cat << EOF
+${GREEN} __  __       _      ${NC}
+${GREEN}|  \/  | ___ | | ___ ${NC}
+${GREEN}| |\/| |/ _ \| |/ _ \\${NC}
+${GREEN}| |  | | (_) | |  __/${NC}  ${BLUE}https://github.com/tw93/mole${NC}
+${GREEN}|_|  |_|\___/|_|\___|${NC}  ${GREEN}${MOLE_TAGLINE}${NC}
+
+EOF
+}
+
+animate_mole_intro() {
+    # Skip animation if stdout isn't a TTY (non-interactive)
+    if [[ ! -t 1 ]]; then
+        return
+    fi
+
+    clear_screen
+    printf '\n'
+    hide_cursor
+
+    local -a mole_lines=()
+    while IFS= read -r line; do
+        mole_lines+=("$line")
+    done <<'EOF'
+        /\_/\
+   ____/ o o \
+ /~____  =o= /
+(______)__m_m)
+        /   \
+     __/ /\ \__
+    /__/  \__\_
+EOF
+
+    local idx
+    local body_cutoff=4
+    local body_color="${PURPLE}"
+    local ground_color="${GREEN}"
+    for idx in "${!mole_lines[@]}"; do
+        if (( idx < body_cutoff )); then
+            printf "%s\n" "${body_color}${mole_lines[$idx]}${NC}"
+        else
+            printf "%s\n" "${ground_color}${mole_lines[$idx]}${NC}"
+        fi
+        sleep 0.1
+    done
+
+    printf '\n'
+    sleep 0.5
+
+    printf '\033[2J\033[H'
+    show_cursor
+}
+
+show_version() {
+    printf 'Mole version %s\n' "$VERSION"
+}
+
+show_help() {
+    show_brand_banner
+    echo
+    printf "%s%s%s\n" "$BLUE" "COMMANDS" "$NC"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo" "$NC" "Interactive main menu"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean" "$NC" "Deeper system cleanup"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --dry-run" "$NC" "Preview cleanup (no deletions)"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo clean --whitelist" "$NC" "Manage protected caches"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo uninstall" "$NC" "Remove applications completely"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo analyze" "$NC" "Interactive disk space explorer"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo update" "$NC" "Update Mole to the latest version"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo remove" "$NC" "Remove Mole from the system"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo --version" "$NC" "Show installed version"
+    printf "  %s%-28s%s %s\n" "$GREEN" "mo --help" "$NC" "Show this help message"
+
+    printf "\n%s%s%s\n" "$BLUE" "MORE" "$NC"
+    printf "  https://github.com/tw93/mole\n\n"
+}
+
+# Simple update function
+update_mole() {
+    # Check if installed via Homebrew
+    if command -v brew >/dev/null 2>&1 && brew list mole >/dev/null 2>&1; then
+        update_via_homebrew "$VERSION"
+        exit 0
+    fi
+
+    # Download and run installer with progress
+    echo -e "${BLUE}◎${NC} Downloading latest version..."
+
+    local installer_url="https://raw.githubusercontent.com/tw93/mole/main/install.sh"
+    local tmp_installer
+    tmp_installer="$(mktemp)" || { log_error "Update failed"; exit 1; }
+
+    # Download installer with progress
+    if command -v curl >/dev/null 2>&1; then
+        if ! curl -fsSL --connect-timeout 10 --max-time 60 "$installer_url" -o "$tmp_installer" 2>&1; then
+            rm -f "$tmp_installer"
+            log_error "Update failed. Check network connection."
+            exit 1
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if ! wget --timeout=10 --tries=3 -qO "$tmp_installer" "$installer_url" 2>&1; then
+            rm -f "$tmp_installer"
+            log_error "Update failed. Check network connection."
+            exit 1
+        fi
+    else
+        rm -f "$tmp_installer"
+        log_error "curl or wget required"
+        exit 1
+    fi
+
+    chmod +x "$tmp_installer"
+
+    # Determine install directory
+    local mole_path
+    mole_path="$(command -v mole 2>/dev/null || echo "$0")"
+    local install_dir
+    install_dir="$(cd "$(dirname "$mole_path")" && pwd)"
+
+    echo -e "${BLUE}◎${NC} Installing update..."
+
+    # Run installer with visible output (but capture for error handling)
+    local install_output
+    if install_output=$("$tmp_installer" --prefix "$install_dir" --config "$HOME/.config/mole" --update 2>&1); then
+        echo "$install_output" | grep -Ev "^$" || true
+        local new_version
+        new_version=$("$mole_path" --version 2>/dev/null | awk 'NF {print $NF}' || echo "")
+        echo -e "${GREEN}✓${NC} Updated to latest version (${new_version:-unknown})"
+    else
+        # Retry without --update flag
+        if install_output=$("$tmp_installer" --prefix "$install_dir" --config "$HOME/.config/mole" 2>&1); then
+            echo "$install_output" | grep -Ev "^$" || true
+            local new_version
+            new_version=$("$mole_path" --version 2>/dev/null | awk 'NF {print $NF}' || echo "")
+            echo -e "${GREEN}✓${NC} Updated to latest version (${new_version:-unknown})"
+        else
+            rm -f "$tmp_installer"
+            log_error "Update failed"
+            echo "$install_output" | tail -10 >&2  # Show last 10 lines of error
+            exit 1
+        fi
+    fi
+
+    rm -f "$tmp_installer"
+    rm -f "$HOME/.cache/mole/version_check" "$HOME/.cache/mole/update_message"
+}
+
+# Remove Mole from system
+remove_mole() {
+    clear
+    echo ""
+    echo -e "${YELLOW}⚠️  Remove Mole${NC}"
+    echo ""
+
+    # Detect all installations
+    local is_homebrew=false
+    local -a manual_installs=()
+    local -a alias_installs=()
+
+    # Check Homebrew
+    if command -v brew >/dev/null 2>&1 && brew list mole >/dev/null 2>&1; then
+        is_homebrew=true
+    fi
+
+    # Check common manual install locations
+    local -a common_paths=(
+        "/usr/local/bin/mole"
+        "$HOME/.local/bin/mole"
+        "/opt/local/bin/mole"
+    )
+
+    for path in "${common_paths[@]}"; do
+        if [[ -f "$path" ]]; then
+            # Check if it's not a Homebrew symlink
+            if [[ ! -L "$path" ]] || ! readlink "$path" | grep -q "Cellar/mole"; then
+                manual_installs+=("$path")
+            fi
+        fi
+    done
+
+    local -a alias_candidates=(
+        "/usr/local/bin/mo"
+        "$HOME/.local/bin/mo"
+        "/opt/local/bin/mo"
+    )
+
+    for alias in "${alias_candidates[@]}"; do
+        if [[ -f "$alias" ]]; then
+            alias_installs+=("$alias")
+        fi
+    done
+
+    # Show what will be removed
+    echo "This will remove:"
+    echo ""
+
+    if [[ "$is_homebrew" == "true" ]]; then
+        echo -e "  ${GREEN}✓${NC} Mole (via Homebrew)"
+    fi
+
+    if [[ ${#manual_installs[@]} -gt 0 ]]; then
+        for install in "${manual_installs[@]}"; do
+            echo -e "  ${GREEN}✓${NC} $install"
+        done
+    fi
+
+    if [[ ${#alias_installs[@]} -gt 0 ]]; then
+        for alias in "${alias_installs[@]}"; do
+            echo -e "  ${GREEN}✓${NC} $alias"
+        done
+    fi
+
+    echo -e "  ${GREEN}✓${NC} ~/.config/mole/ (configuration)"
+    echo -e "  ${GREEN}✓${NC} ~/.cache/mole/ (cache)"
+
+    if [[ "$is_homebrew" == "false" && ${#manual_installs[@]} -eq 0 && ${#alias_installs[@]} -eq 0 ]]; then
+        echo ""
+        echo -e "${YELLOW}No Mole installation detected${NC}"
+        exit 0
+    fi
+
+    echo ""
+
+    # Confirm removal
+    read -p "Are you sure you want to remove Mole? (y/N): " -n 1 -r
+    echo ""
+
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        exit 0
+    fi
+
+    echo ""
+    log_info "Removing Mole..."
+
+    # Remove Homebrew installation
+    if [[ "$is_homebrew" == "true" ]]; then
+        if brew uninstall mole 2>&1 | grep -q "Uninstalling"; then
+            log_success "Uninstalled via Homebrew"
+        else
+            log_error "Failed to uninstall via Homebrew"
+            echo "Try manually: brew uninstall mole"
+        fi
+    fi
+
+    # Remove manual installations
+    if [[ ${#manual_installs[@]} -gt 0 ]]; then
+        for install in "${manual_installs[@]}"; do
+            if [[ -f "$install" ]]; then
+                if rm -f "$install" 2>/dev/null; then
+                    log_success "Removed: $install"
+                else
+                    log_error "Failed to remove $install (try with sudo)"
+                fi
+            fi
+        done
+    fi
+
+    if [[ ${#alias_installs[@]} -gt 0 ]]; then
+        for alias in "${alias_installs[@]}"; do
+            if [[ -f "$alias" ]]; then
+                if rm -f "$alias" 2>/dev/null; then
+                    log_success "Removed alias: $alias"
+                else
+                    log_warning "Could not remove alias $alias (may need sudo)"
+                fi
+            fi
+        done
+    fi
+
+    # Clean up cache first (logs to config)
+    if [[ -d "$HOME/.cache/mole" ]]; then
+        rm -rf "$HOME/.cache/mole" 2>/dev/null && log_success "Removed cache"
+    fi
+
+    # Clean up configuration last (contains logs)
+    if [[ -d "$HOME/.config/mole" ]]; then
+        log_success "Removed configuration"
+        rm -rf "$HOME/.config/mole" 2>/dev/null
+    fi
+
+    echo ""
+    echo -e "${GREEN}✨ Mole has been removed successfully${NC}"
+    echo ""
+    echo "Thank you for using Mole!"
+
+    exit 0
+}
+
+# Display main menu options
+show_main_menu() {
+    local selected="${1:-1}"
+    local full_draw="${2:-true}"
+
+    if [[ "$full_draw" == "true" ]]; then
+        clear_screen
+        echo ""
+        show_brand_banner
+        show_update_notification
+        echo ""
+        printf '\033[s'
+    else
+        printf '\033[u\033[0J'
+    fi
+
+    show_menu_option 1 "Clean Mac - Remove junk files and optimize" "$([[ $selected -eq 1 ]] && echo true || echo false)"
+    show_menu_option 2 "Uninstall Apps - Remove applications completely" "$([[ $selected -eq 2 ]] && echo true || echo false)"
+    show_menu_option 3 "Analyze Disk - Interactive space explorer" "$([[ $selected -eq 3 ]] && echo true || echo false)"
+    show_menu_option 4 "Help & Information - Usage guide and tips" "$([[ $selected -eq 4 ]] && echo true || echo false)"
+    show_menu_option 5 "Exit - Close Mole" "$([[ $selected -eq 5 ]] && echo true || echo false)"
+
+    if [[ -t 0 ]]; then
+        echo ""
+        echo -e "  ${GRAY}↑/↓${NC} Navigate  ${GRAY}|${NC}  ${GRAY}Enter${NC} Select  ${GRAY}|${NC}  ${GRAY}Q/ESC${NC} Quit"
+    fi
+}
+
+# Interactive main menu loop
+interactive_main_menu() {
+    # Show intro animation only once per terminal tab
+    if [[ -t 1 ]]; then
+        local tty_name=$(tty 2>/dev/null || echo "")
+        if [[ -n "$tty_name" ]]; then
+            local flag_file="/tmp/mole_intro_$(echo "$tty_name" | tr -c '[:alnum:]_' '_')"
+            if [[ ! -f "$flag_file" ]]; then
+                animate_mole_intro
+                touch "$flag_file" 2>/dev/null || true
+            fi
+        fi
+    fi
+    local current_option=1
+    local first_draw=true
+    cleanup_and_exit() {
+        show_cursor
+        echo ""
+        echo "Thank you for using Mole!"
+        exit 0
+    }
+
+    trap cleanup_and_exit INT
+    hide_cursor
+
+    while true; do
+        show_main_menu $current_option "$first_draw"
+        if [[ "$first_draw" == "true" ]]; then
+            first_draw=false
+        fi
+
+        local key=$(read_key)
+        [[ $? -ne 0 ]] && continue
+
+        case "$key" in
+            "UP") ((current_option > 1)) && ((current_option--)) ;;
+            "DOWN") ((current_option < 5)) && ((current_option++)) ;;
+            "ENTER"|"$current_option")
+                show_cursor
+                case $current_option in
+                    1)
+                        exec "$SCRIPT_DIR/bin/clean.sh"
+                        ;;
+                    2) exec "$SCRIPT_DIR/bin/uninstall.sh" ;;
+                    3) exec "$SCRIPT_DIR/bin/analyze.sh" ;;
+                    4) clear; show_help; exit 0 ;;
+                    5) cleanup_and_exit ;;
+                esac
+                ;;
+            "QUIT") cleanup_and_exit ;;
+            [1-5])
+                show_cursor
+                case $key in
+                    1)
+                        exec "$SCRIPT_DIR/bin/clean.sh"
+                        ;;
+                    2) exec "$SCRIPT_DIR/bin/uninstall.sh" ;;
+                    3) exec "$SCRIPT_DIR/bin/analyze.sh" ;;
+                    4) clear; show_help; exit 0 ;;
+                    5) cleanup_and_exit ;;
+                esac
+                ;;
+        esac
+    done
+}
+
+main() {
+    case "${1:-""}" in
+        "clean")
+            exec "$SCRIPT_DIR/bin/clean.sh" "${@:2}"
+            ;;
+        "uninstall")
+            exec "$SCRIPT_DIR/bin/uninstall.sh"
+            ;;
+        "analyze")
+            exec "$SCRIPT_DIR/bin/analyze.sh" "${@:2}"
+            ;;
+        "update")
+            update_mole
+            exit 0
+            ;;
+        "remove")
+            remove_mole
+            exit 0
+            ;;
+        "help"|"--help"|"-h")
+            show_help
+            exit 0
+            ;;
+        "version"|"--version"|"-V")
+            show_version
+            exit 0
+            ;;
+        "")
+            check_for_updates
+            interactive_main_menu
+            ;;
+        *)
+            echo "Unknown command: $1"
+            echo "Use 'mole --help' for usage information."
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

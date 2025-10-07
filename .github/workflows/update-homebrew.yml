@@ -1,0 +1,19 @@
+name: Update Homebrew Formula
+
+on:
+  push:
+    tags:
+      - 'V*'
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Homebrew formula
+        uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          formula-name: mole
+          formula-path: Formula/mole.rb
+          homebrew-tap: tw93/homebrew-tap
+        env:
+          COMMITTER_TOKEN: ${{ secrets.PAT_TOKEN }}
