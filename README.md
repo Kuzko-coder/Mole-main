@@ -149,6 +149,11 @@ $ mo analyze
 - **Поставьте звезду репозиторию**, если Mole помог вам освободить место на диске
 - **Поделитесь с друзьями**, которым нужно почистить их Mac
 - **Сообщайте о проблемах** через [GitHub Issues](https://github.com/Kuzko-coder/Mole-main/issues)
+- **Поддержите проект** через [GitHub Sponsors](https://github.com/sponsors/Kuzko-coder) или [kukzo.su](https://kukzo.su)
+
+---
+
+*Русская версия и поддержка: [@Kuzko-coder](https://github.com/Kuzko-coder)*  
 
 ## Лицензия
 
